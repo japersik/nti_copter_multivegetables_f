@@ -15,6 +15,7 @@ from datetime import datetime
 
 set_mode = rospy.ServiceProxy('mavros/set_mode', SetMode)
 
+# setup logger for writing in console and file
 def setup_logger(logger_name, log_file, level=logging.INFO):
     l = logging.getLogger(logger_name)
     formatter = logging.Formatter('%(message)s')
@@ -31,6 +32,8 @@ def setup_logger(logger_name, log_file, level=logging.INFO):
 setup_logger('log1', "logs.txt")
 logger_1 = logging.getLogger('log1')
 image_n = 0
+
+# save photo 
 def take_photo(cv_image, name = 'photo', add_counter = 1):
     global image_n
     image_n +=add_counter
@@ -67,7 +70,8 @@ class Color(Enum):
 	BLUE = (2,'blue','fragile packaging')
 	RED = (3,'red','correspondence')
 	
-
+# Function for color recognition,
+# some functions are borrowed from other sources
 def detectColor():
 	# Reading the video from the 
 	# webcam in image frames 240*320
@@ -215,11 +219,16 @@ def blink_color( r=0, g=0, b=0,time=5,effect='fill'):
 	rospy.sleep(time)
 	set_effect(effect=effect, r=0, g=0, b=0)
 
+# Set of exemplary images of numbers
+# for byte XOR method
 img_0_x = cv2.imread("0_s.jpg")
 img_1_x = cv2.imread("1_s.jpg")
 img_2_x = cv2.imread("2_s.jpg")
 img_3_x = cv2.imread("3_s.jpg")
 
+# Comparing the figure from 
+# the picture with samples
+# using the byte XOR method
 def compare_xor_image(img):
     try:
         if (img is None):
@@ -244,18 +253,18 @@ def compare_xor_image(img):
     except: 
         return None
 
-
+# Comparing the figure from 
+# the picture with samples
+# using the KAZE method
 def compare_image(img1, img2):
     try:
         if (img2 is None):
             return None
-        #logger_1.info('start comp')
-        # Initiate SIFT detector
+        # Initiate KAZE detector
         FLANN_INDEX_KDTREE = 0
         kaze = cv2.KAZE_create(extended = True, threshold = 0.0005, nOctaves = 7, nOctaveLayers = 7)
 
-
-        # find the keypoints and descriptors with SIFT
+        # find the keypoints and descriptors with KAZE
         kp1, des1 = kaze.detectAndCompute(img1, None)
         kp2, des2 = kaze.detectAndCompute(img2, None)
 
@@ -269,20 +278,17 @@ def compare_image(img1, img2):
         for m,n in matches:
             if m.distance < 0.7*n.distance:
                 good.append(m)
-        #logger_1.info('end comp')
         return len(good)
     except: 
         return None
 
+# Function for highlighting green 
+# image and cropping along the contour
 def crop_photo(img2):
-     # first_hsv = cv2.cvtColor(first, cv2.COLOR_BGR2HSV)
     img2_hsv = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
 
     lower_green = np.array([45, 98, 80], np.uint8) 
     upper_green = np.array([79, 255, 172], np.uint8)
-
-    # first_mask = cv2.inRange(first_hsv, lower_green, upper_green)
-    # first_res = cv2.bitwise_and(first, first, mask = first_mask)
 
     img2_mask = cv2.inRange(img2_hsv, lower_green, upper_green) #white_mask
     img2_res = cv2.bitwise_and(img2, img2, mask = img2_mask) #colored
@@ -295,7 +301,6 @@ def crop_photo(img2):
 
     contours = cv2.findContours(green_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 
-    contour_id = 0
     mask = np.zeros_like(img2_mask)
     out = np.zeros_like(img2_mask)
     out[mask == 255] = img2_mask[mask == 255]
@@ -339,11 +344,13 @@ def crop_photo(img2):
         return None, img_mask
     return img2,img_mask    
 
+# Set of exemplary images of numbers for KAZE method
 query_img0 = cv2.imread('00.jpg')
 query_img1 = cv2.imread('11.jpg')
 query_img2 = cv2.imread('22.jpg')
 query_img3 = cv2.imread('33.jpg')
 
+# Function for recognizing the number in the picture
 def detect_number(take_first_num = False ):
     train_img = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
     take_photo(train_img,'full_point',1)
@@ -374,6 +381,8 @@ def detect_number(take_first_num = False ):
         return None
     return ind
 
+# Function for flying around the storage 
+# and searching for color marks
 def fly_storage(min_x = 0, min_y = 0, max_x=0,max_y=0,h = 1.1):
     color_counter = [0,0,0,0]
     plus_flag = True
@@ -391,6 +400,8 @@ def fly_storage(min_x = 0, min_y = 0, max_x=0,max_y=0,h = 1.1):
         plus_flag = not plus_flag
     return color_counter
 
+# Function for flying around
+# the field and finding drone points
 def fly_check_points(min_x = 0, min_y = 0, max_x=0,max_y=0,h = 1.5):
     n=0
     points_counter = [None,None,None,None,None,None,None,None,None,None,None,None]
@@ -417,6 +428,8 @@ def fly_check_points(min_x = 0, min_y = 0, max_x=0,max_y=0,h = 1.5):
         plus_flag = not plus_flag
     return points_counter
 
+# Function of displaying information
+# about things in the storage
 def print_items_info(items_array = [0,0,0,0]):
     sum_p = 0
     for number in items_array:
@@ -425,6 +438,8 @@ def print_items_info(items_array = [0,0,0,0]):
     for n in range(0,4):
         logger_1.info("Type {}: {} cargo".format(n,items_array[n]))
 
+# Function of flight to all points and 
+# display of delivery information
 def go_points(points):
     n=0
     while(points[n] is not None):
@@ -449,7 +464,8 @@ def go_points(points):
             blink_color(r=255,time = 5)
         navigate_wait(z=1, frame_id='body', auto_arm=True)
         n+=1
-
+        
+# printing information about the delivery of things
 def print_delivered(points,items_count_array):
     n=0
     sum_p=0
@@ -466,6 +482,12 @@ def print_delivered(points,items_count_array):
     balance = sum_p-sum_n
     logger_1.info('Balance: {} cargo.'.format(balance))
 
+# Program logic:
+# - Takeoff
+# - warehouse revision
+# - drone point detection
+# - landing on dronepoints
+# - flight to the starting point
 def main():
     navigate_wait(z=2, frame_id='body', auto_arm=True)
     navigate_wait(x = 0 , y = 4.5*0.9, z=2, frame_id='aruco_map',speed=0.4)
@@ -487,12 +509,14 @@ def main():
     land()
     print_delivered(points, items_count_array )
 
+# program launch
+# landing in all emergency situations
 if __name__ == "__main__":
     try:
         logger_1.info("Ah dronpoint... Here we go again")
         main()
     except Exception, e :
-        logger_1.error('Error: landing...\n'+str(e))
+        logger_1.error('Error: landing...\n'+str(e)) #
         land()
     finally:
         set_effect(r=255, g=255, b=255, effect='fill')
