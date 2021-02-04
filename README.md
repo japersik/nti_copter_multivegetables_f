@@ -5,7 +5,7 @@
 2. Задание олимпиады
 
 ### Инструкция по запуску:
-1. Установить симулятор Clover, [инструкция](https://clover.coex.tech/ru/simulation.html)
+1. Установить симулятор Clover, [инструкция](https://clover.coex.tech/ru/simulation_vm.html)
 2. Скопировать данный репозиторий в отдельную директорию с помощью `git clone https://github.com/japersik/nti_copter_multivegetables_f`
 3. Запустить испольняемый python файл с помощью `python vegetables_finally.py`
 4. Дождаться выполнения программы
